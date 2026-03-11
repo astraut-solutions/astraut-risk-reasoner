@@ -21,7 +21,7 @@ astraut-risk demo
 
 Example output:
 
-![Demo](docs/demo.png)
+![Demo](docs/demo/latest.gif)
 Example output from `astraut-risk demo`.  
 Runs instantly without API keys or network calls.
 
@@ -68,6 +68,18 @@ astraut-risk --help
 
 ```bash
 astraut-risk assess "We are a 12-person SaaS startup on AWS using Gmail, Stripe, and a custom web app with public API. No MFA on admin yet."
+```
+
+Export an assessment to CSV:
+
+```bash
+astraut-risk assess "We are a 12 person SaaS startup using AWS, Gmail, Stripe and a public API" --export csv
+```
+
+Export both CSV and JSON in one run:
+
+```bash
+astraut-risk assess "We are a 12 person SaaS startup using AWS, Gmail, Stripe and a public API" --export csv,json
 ```
 
 Use the lighter model:
@@ -212,6 +224,8 @@ It is part of the Astraut Solutions research project exploring AI-assisted risk 
 ## Commands
 
 - `astraut-risk assess "..."`: AI-assisted risk assessment via Groq.
+- `astraut-risk assess "..." --export csv`: Run assessment and export results to CSV.
+- `astraut-risk assess "..." --export csv,json`: Export both CSV and structured JSON.
 - `astraut-risk checklist`: Practical baseline checklist for SMEs.
 - `astraut-risk matrix`: Cybersecurity Investment Strategy Matrix 2025.
 - `astraut-risk demo`: Full static demo output, no API key needed.

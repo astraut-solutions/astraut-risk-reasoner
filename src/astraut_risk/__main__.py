@@ -5,6 +5,10 @@ from __future__ import annotations
 import os
 import socket
 import sys
+from datetime import datetime
+import csv
+import json
+from pathlib import Path
 from typing import Dict, List
 
 import typer
@@ -179,12 +183,27 @@ def assess(
         "--model",
         help="Groq model to use (llama-3.3-70b-versatile or llama3-8b-8192).",
     ),
+    export: str = typer.Option(
+        "",
+        "--export",
+        help="Export formats for results. Supported: csv, json, or csv,json",
+    ),
+    output: str = typer.Option(
+        "",
+        "--output",
+        help="Output path for exported file(s). For multi-format exports, extensions are auto-appended.",
+    ),
 ) -> None:
     """Assess risk based on a natural-language company description."""
     if model not in {"llama-3.3-70b-versatile", "llama3-8b-8192"}:
         console.print(
             "[red]Invalid model.[/red] Use `llama-3.3-70b-versatile` or `llama3-8b-8192`."
         )
+        raise typer.Exit(code=1)
+    try:
+        export_formats = _parse_export_formats(export)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1)
 
     console.print(
@@ -214,6 +233,30 @@ def assess(
 
     content = response.choices[0].message.content or "No response generated."
     _render_assessment(content)
+    if export_formats:
+        multi = len(export_formats) > 1
+        exported_files: List[str] = []
+        for fmt in export_formats:
+            out_path = _resolve_output_path(output, fmt, multi)
+            if fmt == "csv":
+                exported = _export_assessment_csv(
+                    company_description=company_description,
+                    model=model,
+                    content=content,
+                    output_path=out_path,
+                )
+            else:
+                exported = _export_assessment_json(
+                    company_description=company_description,
+                    model=model,
+                    content=content,
+                    output_path=out_path,
+                )
+            exported_files.append(exported)
+        console.print(
+            "[bold green]Exported assessment files:[/bold green] "
+            + ", ".join(exported_files)
+        )
 
 
 def _render_assessment(content: str) -> None:
@@ -225,6 +268,82 @@ def _render_assessment(content: str) -> None:
             padding=(1, 2),
         )
     )
+
+
+def _export_assessment_csv(
+    company_description: str, model: str, content: str, output_path: str | None = None
+) -> str:
+    path = output_path or f"astraut_assessment_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    rows = [
+        ("timestamp", datetime.now().isoformat(timespec="seconds")),
+        ("model", model),
+        ("company_description", company_description),
+        ("assessment_markdown", content),
+    ]
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["field", "value"])
+        writer.writerows(rows)
+    return path
+
+
+def _extract_markdown_sections(content: str) -> Dict[str, str]:
+    sections: Dict[str, str] = {}
+    current = "full_response"
+    lines: List[str] = []
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if line.startswith("## "):
+            sections[current] = "\n".join(lines).strip()
+            current = line[3:].strip().lower().replace(" ", "_")
+            lines = []
+        else:
+            lines.append(raw_line)
+    sections[current] = "\n".join(lines).strip()
+    return {k: v for k, v in sections.items() if v}
+
+
+def _export_assessment_json(
+    company_description: str, model: str, content: str, output_path: str | None = None
+) -> str:
+    path = output_path or f"astraut_assessment_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    payload = {
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "model": model,
+        "company_description": company_description,
+        "assessment_markdown": content,
+        "sections": _extract_markdown_sections(content),
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    return path
+
+
+def _parse_export_formats(export: str) -> List[str]:
+    if not export.strip():
+        return []
+    formats = [fmt.strip().lower() for fmt in export.split(",") if fmt.strip()]
+    unique: List[str] = []
+    for fmt in formats:
+        if fmt not in unique:
+            unique.append(fmt)
+    invalid = [fmt for fmt in unique if fmt not in {"csv", "json"}]
+    if invalid:
+        raise ValueError(
+            f"Invalid export format(s): {', '.join(invalid)}. Supported values: csv, json"
+        )
+    return unique
+
+
+def _resolve_output_path(output: str, fmt: str, multi: bool) -> str | None:
+    if not output:
+        return None
+    if not multi:
+        return output
+    p = Path(output)
+    stem = p.with_suffix("")
+    return f"{stem}.{fmt}"
 
 
 @app.command()
