@@ -1,14 +1,77 @@
 # Astraut Risk Reasoner
 
+![MIT License](https://img.shields.io/badge/license-MIT-green)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![CLI Tool](https://img.shields.io/badge/type-CLI-orange)
+![Security](https://img.shields.io/badge/domain-cybersecurity-red)
+
 Astraut Risk Reasoner is the first open-source CLI product from **Astraut Solutions**, an independent research group focused on AI, cybersecurity, and responsible automation for SMEs.
+
 See real example outputs below 👇
 
 It helps small teams reason clearly about digital risk and practical next steps before minor weaknesses become incidents.
 
+## 30-Second Demo
+
+```bash
+pip install "git+https://github.com/astraut-solutions/astraut-risk-reasoner.git"
+
+astraut-risk demo
+```
+
+Example output:
+
+![Demo](docs/demo.png)
+
+## Quick Install (GitHub)
+
+Install directly from GitHub in one command:
+
+```bash
+pip install "git+https://github.com/astraut-solutions/astraut-risk-reasoner.git"
+```
+
+Then run:
+
+```bash
+astraut-risk --help
+```
+
+## Usage
+
+### Main assessment command
+
+```bash
+astraut-risk assess "We are a 12-person SaaS startup on AWS using Gmail, Stripe, and a custom web app with public API. No MFA on admin yet."
+```
+
+Use the lighter model:
+
+```bash
+astraut-risk assess "..." --model llama3-8b-8192
+```
+
+### Static checklist
+
+```bash
+astraut-risk checklist
+```
+
+### 2025 investment matrix
+
+```bash
+astraut-risk matrix
+```
+
+### Demo (no API key required)
+
+```bash
+astraut-risk demo
+```
+
 ## Example Output
 
 Here’s exactly what each command produces (real output with Rich formatting):
-![Demo](docs/demo.png)
 
 ### assess
 
@@ -105,62 +168,22 @@ astraut-risk assess "We are a 12-person SaaS startup on AWS using Gmail, Stripe,
 ╰──────────┴─────────────────────────────┴─────────────────────────────┴──────────────────────────────╯
 ```
 
-## Mission Fit
+## Why this exists
 
-This tool reflects Astraut's operating principles:
-- Zero Trust thinking by default.
-- AI-assisted risk reasoning for practical decision support.
-- Actionable NIST/OWASP/CISA-aligned guidance for teams of 5-50 people.
-- Resilience basics first: MFA, segmentation, backups, detection, clear ownership.
+Small and medium businesses rarely have dedicated security teams.
 
-## Features
+Most risk frameworks are designed for enterprises and are too complex for small teams.
 
-- `astraut-risk assess "..."`:
-  - Uses Groq LLMs (`llama-3.3-70b-versatile` by default).
-  - Applies Astraut's risk system prompt.
-  - Produces structured, practical output with Rich formatting.
-- `astraut-risk checklist`:
-  - Static, practical SME security checklist.
-- `astraut-risk matrix`:
-  - Cybersecurity Investment Strategy Matrix 2025 in a Rich table.
-- `astraut-risk demo`:
-  - Shows a complete sample assessment and matrix without API keys.
+Astraut Risk Reasoner helps SMEs quickly think through cyber risk using practical Zero Trust principles.
 
-## Quick Install (GitHub)
+It is part of the Astraut Solutions research project exploring AI-assisted risk reasoning for small organisations.
 
-Install directly from GitHub in one command:
+## Commands
 
-```bash
-pip install "git+https://github.com/astraut-solutions/astraut-risk-reasoner.git"
-```
-
-Then run:
-
-```bash
-astraut-risk --help
-```
-
-## Install
-
-### 1) Clone and enter project
-
-```bash
-git clone <your-fork-or-repo-url>
-cd astraut-risk-reasoner
-```
-
-### 2) (Optional) Create a virtual environment
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-```
-
-### 3) Install in editable mode
-
-```bash
-pip install -e .
-```
+- `astraut-risk assess "..."`: AI-assisted risk assessment via Groq.
+- `astraut-risk checklist`: Practical baseline checklist for SMEs.
+- `astraut-risk matrix`: Cybersecurity Investment Strategy Matrix 2025.
+- `astraut-risk demo`: Full static demo output, no API key needed.
 
 ## Configure Groq API Key
 
@@ -182,36 +205,26 @@ You can also export it directly:
 export GROQ_API_KEY=your_real_key_here
 ```
 
-## Usage
+## Install (Editable for Development)
 
-### Main assessment command
+### 1) Clone and enter project
 
 ```bash
-astraut-risk assess "We are a 12-person SaaS startup on AWS using Gmail, Stripe, and a custom web app with public API. No MFA on admin yet."
+git clone <your-fork-or-repo-url>
+cd astraut-risk-reasoner
 ```
 
-Use the lighter model:
+### 2) (Optional) Create a virtual environment
 
 ```bash
-astraut-risk assess "..." --model llama3-8b-8192
+python -m venv .venv
+source .venv/bin/activate  # Linux/macOS
 ```
 
-### Static checklist
+### 3) Install in editable mode
 
 ```bash
-astraut-risk checklist
-```
-
-### 2025 investment matrix
-
-```bash
-astraut-risk matrix
-```
-
-### Demo (no API key required)
-
-```bash
-astraut-risk demo
+pip install -e .
 ```
 
 ## Python module execution
@@ -238,3 +251,5 @@ This is a **research tool** from Astraut Solutions. It is not legal advice, comp
 ## License
 
 MIT. See [LICENSE](./LICENSE).
+
+⭐ If this project is useful, consider starring the repo.
