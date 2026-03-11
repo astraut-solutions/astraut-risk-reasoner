@@ -35,6 +35,39 @@ SYSTEM_PROMPT = (
     "then advanced)."
 )
 
+DEMO_INPUT = (
+    "We are a 12-person SaaS startup on AWS using Gmail, Stripe, and a custom "
+    "web app with public API. No MFA on admin yet."
+)
+
+DEMO_ASSESSMENT = """## Overall Risk Score
+8/10 ⚠️
+
+## Top 3 Risks
+1. No MFA on privileged/admin paths (AWS, Gmail admin, app admin).
+2. Public API abuse risk from weak auth, rate limits, and key exposure.
+3. Excessive access scope increases blast radius after credential theft.
+
+## Personalized Recommendations (Zero Trust first)
+- Enforce MFA for all privileged accounts in 48 hours; disable legacy auth.
+- Segment admin access from production/data-plane access.
+- Apply least-privilege IAM and short-lived credentials for humans/services.
+- Add centralized auth/API monitoring with high-signal alerting.
+
+## 7-day Action Checklist
+1. Day 1-2: Enable MFA for AWS root/admin, Google Workspace admins, app admins.
+2. Day 3: Tighten IAM roles and remove shared admin credentials.
+3. Day 4: Harden API auth scopes, rotate secrets, and enforce rate limiting.
+4. Day 5: Test restore for backups of data, configs, and infra state.
+5. Day 6: Configure alerts for impossible travel, privilege escalation, API abuse.
+6. Day 7: Run tabletop for account takeover + leaked token scenarios.
+
+## Suggested investment priorities (2025 matrix)
+1. MFA + segmentation first.
+2. Detection and response second.
+3. Advanced controls after baseline maturity.
+"""
+
 CHECKLIST_ITEMS: List[str] = [
     "Enable MFA for all admin, cloud, email, finance, and code-repo accounts.",
     "Define least-privilege access and remove stale users every month.",
@@ -143,6 +176,10 @@ def assess(
         )
 
     content = response.choices[0].message.content or "No response generated."
+    _render_assessment(content)
+
+
+def _render_assessment(content: str) -> None:
     console.print(
         Panel.fit(
             Markdown(content),
@@ -150,6 +187,23 @@ def assess(
             border_style="green",
             padding=(1, 2),
         )
+    )
+
+
+@app.command()
+def demo() -> None:
+    """Print a full example assessment output without requiring API keys."""
+    console.print(
+        Panel(
+            f"[bold cyan]Input:[/bold cyan] {DEMO_INPUT}",
+            title="Astraut Risk Reasoner",
+            border_style="cyan",
+        )
+    )
+    _render_assessment(DEMO_ASSESSMENT)
+    matrix()
+    console.print(
+        "[dim]Demo mode: static example output (no API key or network call required).[/dim]"
     )
 
 
