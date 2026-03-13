@@ -13,6 +13,7 @@ env/
 
 # Environment/config secrets
 .env
+.env.*
 
 # OS/editor
 .DS_Store
@@ -20,3 +21,7 @@ env/
 .vscode/
 
 prompt/
+
+# Local runtime artifacts
+assessments/
+*.log
