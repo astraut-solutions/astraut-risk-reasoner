@@ -15,6 +15,8 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 from astraut_risk.checklist import CHECKLIST_ITEMS
+from astraut_risk.assessment_formatter import compose_assessment_markdown
+from astraut_risk.assessment_store import load_cached_result, save_cached_result
 from astraut_risk.config import (
     DEFAULT_MODEL,
     MissingApiKeyError,
@@ -22,6 +24,7 @@ from astraut_risk.config import (
     load_environment,
 )
 from astraut_risk.matrix import MATRIX_ROWS
+from astraut_risk.risk_engine import assess_company_risk
 from astraut_risk.reasoning import (
     InvalidInputError,
     LLMAPIError,
@@ -30,6 +33,7 @@ from astraut_risk.reasoning import (
     request_completion,
     validate_company_description,
 )
+from astraut_risk.scenarios import SCENARIOS
 
 load_environment()
 
@@ -145,6 +149,9 @@ def _risk_score_from_text(text: str, full_text: str = "") -> str:
     match = re.search(r"\b(\d{1,2})\s*/\s*10\b", text)
     if match:
         return match.group(0)
+    match_100 = re.search(r"\b(\d{1,3})\s*/\s*100\b", text)
+    if match_100:
+        return match_100.group(0)
     num_match = re.search(r"\boverall risk score\s*:\s*(\d{1,2})\b", full_text, re.I)
     if num_match:
         return f"{num_match.group(1)}/10"
@@ -176,14 +183,55 @@ def _table_from_list_text(text: str) -> list[dict[str, str]]:
     return [{"Item": item} for item in items]
 
 
-def _run_assessment(company_description: str) -> str:
+def _compose_web_assessment_markdown(
+    company_assessment, llm_explanation: str
+) -> str:
+    return compose_assessment_markdown(company_assessment, llm_explanation)
+
+
+def _run_assessment(
+    company_description: str,
+    *,
+    use_cache: bool,
+    refresh_cache: bool,
+) -> str:
     validate_company_description(company_description)
-    api_key = get_groq_api_key(required=True)
-    client = Groq(api_key=api_key)
-    return request_completion(
-        client=client,
-        messages=build_assessment_messages(company_description),
-        model=DEFAULT_MODEL,
+    deterministic = assess_company_risk(company_description)
+
+    cached = None
+    if use_cache and not refresh_cache:
+        cached = load_cached_result(
+            company_description=company_description,
+            model=DEFAULT_MODEL,
+            assessment=deterministic,
+        )
+    if cached and cached.get("llm_explanation"):
+        llm_explanation = str(cached["llm_explanation"])
+    else:
+        api_key = get_groq_api_key(required=True)
+        client = Groq(api_key=api_key)
+        llm_explanation = request_completion(
+            client=client,
+            messages=build_assessment_messages(
+                company_description, assessment=deterministic
+            ),
+            model=DEFAULT_MODEL,
+        )
+        if use_cache:
+            save_cached_result(
+                company_description=company_description,
+                model=DEFAULT_MODEL,
+                assessment=deterministic,
+                llm_explanation=llm_explanation,
+                assessment_markdown=_compose_web_assessment_markdown(
+                    deterministic,
+                    llm_explanation,
+                ),
+            )
+
+    return _compose_web_assessment_markdown(
+        deterministic,
+        llm_explanation,
     )
 
 
@@ -201,22 +249,43 @@ st.sidebar.markdown(
     "GitHub repo: [astraut-risk-reasoner](https://github.com/astraut-solutions/astraut-risk-reasoner)"
 )
 show_raw_output = st.sidebar.checkbox("Show raw model output (debug)", value=False)
+use_cached_assessments = st.sidebar.checkbox(
+    "Use cached assessment results",
+    value=True,
+)
+refresh_cached_assessment = st.sidebar.checkbox(
+    "Force fresh LLM run",
+    value=False,
+    help="Ignores cached result for this run and refreshes saved content.",
+)
 
 risk_tab, checklist_tab, matrix_tab = st.tabs(
     ["Risk Assessment", "Security Checklist", "Investment Matrix"]
 )
 
 with risk_tab:
+    scenario_options = ["Custom"] + sorted(SCENARIOS.keys())
+    selected_scenario = st.selectbox("Example scenario", scenario_options, index=0)
+    default_description = (
+        SCENARIOS[selected_scenario]["description"]
+        if selected_scenario != "Custom"
+        else ""
+    )
     description = st.text_area(
         "Describe your company environment",
         placeholder="12-person SaaS startup on AWS using Gmail, Stripe, and a public API",
+        value=default_description,
         height=120,
     )
 
     if st.button("Assess Risk", type="primary"):
         try:
             with st.spinner("Analyzing environment..."):
-                content = _run_assessment(description)
+                content = _run_assessment(
+                    description,
+                    use_cache=use_cached_assessments,
+                    refresh_cache=refresh_cached_assessment,
+                )
 
             sections = _extract_sections(content)
 
@@ -230,6 +299,10 @@ with risk_tab:
             st.header("Top Risks")
             top_risks = _get_section(sections, ["Top 3 Risks", "Top Risks"])
             st.table(_table_from_list_text(top_risks))
+
+            st.header("Framework Mapping")
+            framework_mapping = _get_section(sections, ["Framework Mapping"])
+            st.markdown(framework_mapping)
 
             st.header("Recommendations")
             recommendations = _get_section(
@@ -259,6 +332,10 @@ with risk_tab:
                 ],
             )
             st.table(_table_from_list_text(priorities))
+
+            st.header("Method")
+            method = _get_section(sections, ["Method"])
+            st.markdown(method)
 
             if show_raw_output:
                 with st.expander("Raw model output"):

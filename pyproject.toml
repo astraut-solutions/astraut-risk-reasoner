@@ -33,6 +33,7 @@ dependencies = [
   "rich>=13.7.1",
   "groq>=0.9.0",
   "python-dotenv>=1.0.1",
+  "PyYAML>=6.0.1",
 ]
 
 [project.optional-dependencies]
@@ -56,6 +57,9 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+astraut_risk = ["frameworks/*.yaml"]
 
 [tool.black]
 line-length = 88
